@@ -1,0 +1,118 @@
+import requests
+from bs4 import BeautifulSoup
+import os
+import json
+from datetime import datetime
+import xml.etree.ElementTree as ET
+from dateutil import parser
+import functions_framework
+
+INGEST_API_BASE = os.getenv('INGEST_API_BASE', 'http://localhost:8080/ingest')
+SOURCE_CODE = 'UDN'
+RSS_URL = 'https://udn.com/rssfeed/latest'
+
+def get_new_urls(urls):
+    try:
+        resp = requests.post(
+            f"{INGEST_API_BASE}/check-urls",
+            json={"sourceCode": SOURCE_CODE, "urls": urls},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception as e:
+        print(f"Error checking URLs: {e}")
+    return []
+
+def scrape_article(url):
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        resp = requests.get(url, headers=headers, timeout=15)
+        resp.encoding = 'utf-8'
+        soup = BeautifulSoup(resp.text, 'lxml')
+
+        # 聯合新聞網的選擇器
+        title_node = soup.select_one('h1.article-content__title')
+        title = title_node.get_text(strip=True) if title_node else ""
+        
+        content_node = soup.select_one('section.article-content__editor')
+        if content_node:
+            for tag in content_node.select('script, style, .inline-ad, .article-content__info'):
+                tag.decompose()
+            clean_text = content_node.get_text("\n", strip=True)
+        else:
+            clean_text = ""
+
+        time_node = soup.select_one('time.article-content__time')
+        published_at = ""
+        if time_node:
+            time_str = time_node.get_text(strip=True)
+            try:
+                dt = parser.parse(time_str)
+                published_at = dt.isoformat()
+            except:
+                published_at = datetime.now().isoformat()
+        else:
+            published_at = datetime.now().isoformat()
+
+        return {
+            "source": SOURCE_CODE,
+            "url": url,
+            "title": title,
+            "publishedAt": published_at,
+            "rawHtml": resp.text,
+            "cleanText": clean_text
+        }
+    except Exception as e:
+        print(f"Error scraping {url}: {e}")
+        return None
+
+def ingest_article(data):
+    try:
+        resp = requests.post(
+            f"{INGEST_API_BASE}/articles",
+            json=data,
+            timeout=10
+        )
+        return resp.status_code == 202
+    except Exception as e:
+        print(f"Error ingesting article: {e}")
+        return False
+
+@functions_framework.http
+def run_scraper(request):
+    print(f"Starting {SOURCE_CODE} scraper...")
+    # 分類代碼：1 (要聞/政治), 2 (社會), 5 (國際)
+    CAT_IDS = ['1', '2', '5']
+    all_urls = []
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+
+    for cat_id in CAT_IDS:
+        list_url = f'https://udn.com/news/breaknews/1/{cat_id}'
+        try:
+            resp = requests.get(list_url, headers=headers, timeout=10)
+            soup = BeautifulSoup(resp.text, 'lxml')
+            for a in soup.select('div.story-list__text h2 a'):
+                href = a['href']
+                full_url = "https://udn.com" + href.split('?')[0]
+                all_urls.append(full_url)
+        except Exception as e:
+            print(f"Failed to fetch {cat_id} list: {e}")
+
+    if not all_urls:
+        return "No URLs found in categories", 200
+
+    new_urls = get_new_urls(list(set(all_urls)))
+    success_count = 0
+    for url in new_urls:
+        article_data = scrape_article(url)
+        if article_data and article_data['cleanText']:
+            if ingest_article(article_data):
+                success_count += 1
+    
+    return f"Successfully processed {success_count} articles from {SOURCE_CODE}", 200
