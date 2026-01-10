@@ -36,12 +36,13 @@ gcloud functions deploy run_scraper \
 --runtime python311 \
 --trigger-http \
 --allow-unauthenticated \
---set-env-vars INGEST_API_BASE="http://你的伺服器IP:連接埠/ingest" \
+--set-env-vars INGEST_API_BASE="https://square-news-632027619686.asia-east1.run.app/ingest",API_KEY="your-api-key-here" \
 --region asia-east1
 ```
 
 ## 環境變數
-- `INGEST_API_BASE`: 後端 API 的基礎路徑 (例如 `http://35.201.xxx.xxx:8080/ingest`)。預設為 `http://localhost:8080/ingest`。
+- `INGEST_API_BASE`: 後端 API 的基礎路徑 (例如 `https://square-news-632027619686.asia-east1.run.app/ingest`)。預設為 `https://square-news-632027619686.asia-east1.run.app/ingest`。
+- `API_KEY`: API 認證金鑰。預設為 `temporary-api-key-123`。
 
 ## 定期執行 (Cloud Scheduler)
 建議配合 **Cloud Scheduler** 設定每 30 分鐘或每小時觸發一次 URL。

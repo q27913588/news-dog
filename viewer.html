@@ -251,6 +251,8 @@
     const sortSelect = document.getElementById('sort-select');
     const noResults = document.getElementById('no-results');
 
+    const API_KEY = 'temporary-api-key-123';
+
     let allData = [];
     let sources = [];
 
@@ -395,7 +397,11 @@
 
     // Auto-try to load if file exists in the same folder (only works if served via http or some browser settings)
     window.addEventListener('load', () => {
-        fetch('full_test_results.json')
+        fetch('full_test_results.json', {
+            headers: {
+                'X-API-KEY': API_KEY
+            }
+        })
             .then(response => {
                 if (response.ok) return response.json();
                 throw new Error('Not found');

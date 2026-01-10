@@ -7,7 +7,8 @@ import xml.etree.ElementTree as ET
 from dateutil import parser
 import functions_framework
 
-INGEST_API_BASE = os.getenv('INGEST_API_BASE', 'http://localhost:8080/ingest')
+INGEST_API_BASE = os.getenv('INGEST_API_BASE', 'https://square-news-632027619686.asia-east1.run.app/ingest')
+API_KEY = os.getenv('API_KEY', 'temporary-api-key-123')
 SOURCE_CODE = 'UDN'
 RSS_URL = 'https://udn.com/rssfeed/latest'
 
@@ -16,6 +17,7 @@ def get_new_urls(urls):
         resp = requests.post(
             f"{INGEST_API_BASE}/check-urls",
             json={"sourceCode": SOURCE_CODE, "urls": urls},
+            headers={"X-API-KEY": API_KEY},
             timeout=10
         )
         if resp.status_code == 200:
@@ -74,6 +76,7 @@ def ingest_article(data):
         resp = requests.post(
             f"{INGEST_API_BASE}/articles",
             json=data,
+            headers={"X-API-KEY": API_KEY},
             timeout=10
         )
         return resp.status_code == 202
