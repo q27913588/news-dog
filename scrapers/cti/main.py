@@ -114,7 +114,7 @@ def scrape_article(url):
             "url": url,
             "title": title,
             "publishedAt": published_at,
-            "rawHtml": resp.text,
+            "rawHtml": "",
             "cleanText": clean_text
         }
     except Exception as e:
