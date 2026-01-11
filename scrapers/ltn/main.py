@@ -1,4 +1,6 @@
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 import os
 import json
@@ -13,14 +15,34 @@ API_KEY = os.getenv('API_KEY', 'temporary-api-key-123')
 SOURCE_CODE = 'LTN'
 RSS_URL = 'https://news.ltn.com.tw/rss/all.xml'
 
+# 建立全域 Session 以便重用連線
+def create_session():
+    session = requests.Session()
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET", "POST"],
+        raise_on_status=False
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy, pool_connections=10, pool_maxsize=10)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    })
+    return session
+
+http_session = create_session()
+
 def get_new_urls(urls):
     """呼叫後端 API 檢查哪些 URL 尚未爬取"""
     try:
-        resp = requests.post(
+        resp = http_session.post(
             f"{INGEST_API_BASE}/check-urls",
             json={"sourceCode": SOURCE_CODE, "urls": urls},
             headers={"X-API-KEY": API_KEY},
-            timeout=10
+            timeout=15
         )
         if resp.status_code == 200:
             return resp.json()
@@ -31,10 +53,7 @@ def get_new_urls(urls):
 def scrape_article(url):
     """爬取單篇文章內容"""
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        resp = requests.get(url, headers=headers, timeout=15)
+        resp = http_session.get(url, timeout=20)
         resp.encoding = 'utf-8'
         soup = BeautifulSoup(resp.text, 'lxml')
 
@@ -77,11 +96,11 @@ def scrape_article(url):
             try:
                 # 預期格式: 2026/01/10 14:30
                 dt = parser.parse(time_str)
-                published_at = dt.isoformat()
+                published_at = dt.strftime('%Y-%m-%d %H:%M:%S')
             except:
-                published_at = datetime.now().isoformat()
+                published_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         else:
-            published_at = datetime.now().isoformat()
+            published_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         return {
             "source": SOURCE_CODE,
@@ -98,11 +117,11 @@ def scrape_article(url):
 def ingest_article(data):
     """將爬取的文章送入後端"""
     try:
-        resp = requests.post(
+        resp = http_session.post(
             f"{INGEST_API_BASE}/articles",
             json=data,
             headers={"X-API-KEY": API_KEY},
-            timeout=10
+            timeout=15
         )
         return resp.status_code == 202
     except Exception as e:
@@ -118,14 +137,10 @@ def run_scraper(request):
     CATEGORIES = ['politics', 'society', 'world']
     all_urls = []
     
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
-
     for cat in CATEGORIES:
         list_url = f'https://news.ltn.com.tw/list/breakingnews/{cat}'
         try:
-            resp = requests.get(list_url, headers=headers, timeout=10)
+            resp = http_session.get(list_url, timeout=15)
             soup = BeautifulSoup(resp.text, 'lxml')
             # 修改選擇器，不鎖定 tit class
             for a in soup.select('ul.list li a'):
@@ -139,15 +154,28 @@ def run_scraper(request):
         return "No URLs found in categories", 200
 
     # 2. 去重檢查
-    new_urls = get_new_urls(list(set(all_urls)))
-    print(f"Found {len(new_urls)} new URLs out of {len(urls)}")
+    unique_urls = list(set(all_urls))
+    new_urls = get_new_urls(unique_urls)
+    print(f"Found {len(new_urls)} new URLs out of {len(unique_urls)}")
 
     # 3. 抓取與送入
     success_count = 0
     for url in new_urls:
         article_data = scrape_article(url)
-        if article_data and article_data['cleanText']:
-            if ingest_article(article_data):
-                success_count += 1
+        if not article_data:
+            continue
+            
+        # 檢查必填欄位
+        if not article_data.get('title'):
+            print(f"Skipping {url}: Missing title")
+            continue
+        if not article_data.get('cleanText'):
+            print(f"Skipping {url}: Missing cleanText")
+            continue
+            
+        if ingest_article(article_data):
+            success_count += 1
+        else:
+            print(f"Failed to ingest: {url}")
     
     return f"Successfully processed {success_count} articles from {SOURCE_CODE}", 200

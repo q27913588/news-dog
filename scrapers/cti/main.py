@@ -1,4 +1,6 @@
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 import os
 import json
@@ -6,19 +8,47 @@ from datetime import datetime
 import xml.etree.ElementTree as ET
 from dateutil import parser
 import functions_framework
+import urllib3
+
+# 禁用不安全請求警告 (因為 CTI 需要 verify=False)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 INGEST_API_BASE = os.getenv('INGEST_API_BASE', 'https://square-news-632027619686.asia-east1.run.app/ingest')
 API_KEY = os.getenv('API_KEY', 'temporary-api-key-123')
 SOURCE_CODE = 'CTI'
 RSS_URL = 'https://ctinews.com/rss/all.xml'
 
+# 建立全域 Session 以便重用連線
+def create_session():
+    session = requests.Session()
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET", "POST"],
+        raise_on_status=False
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy, pool_connections=10, pool_maxsize=10)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    })
+    # CTI 有時會有 SSL 憑證問題
+    session.verify = False
+    return session
+
+http_session = create_session()
+
 def get_new_urls(urls):
     try:
-        resp = requests.post(
+        # 對於 API 呼叫，我們應該啟用驗證，但 Session 全域關閉了，所以這裡手動開啟
+        resp = http_session.post(
             f"{INGEST_API_BASE}/check-urls",
             json={"sourceCode": SOURCE_CODE, "urls": urls},
             headers={"X-API-KEY": API_KEY},
-            timeout=10
+            timeout=15,
+            verify=True
         )
         if resp.status_code == 200:
             return resp.json()
@@ -28,11 +58,7 @@ def get_new_urls(urls):
 
 def scrape_article(url):
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        # CTI 有時會有 SSL 憑證問題，加上 verify=False
-        resp = requests.get(url, headers=headers, timeout=15, verify=False)
+        resp = http_session.get(url, timeout=20)
         resp.encoding = 'utf-8'
         soup = BeautifulSoup(resp.text, 'lxml')
 
@@ -77,11 +103,11 @@ def scrape_article(url):
             time_str = time_node.get('datetime') or time_node.get_text(strip=True)
             try:
                 dt = parser.parse(time_str)
-                published_at = dt.isoformat()
+                published_at = dt.strftime('%Y-%m-%d %H:%M:%S')
             except:
-                published_at = datetime.now().isoformat()
+                published_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         else:
-            published_at = datetime.now().isoformat()
+            published_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         return {
             "source": SOURCE_CODE,
@@ -97,11 +123,12 @@ def scrape_article(url):
 
 def ingest_article(data):
     try:
-        resp = requests.post(
+        resp = http_session.post(
             f"{INGEST_API_BASE}/articles",
             json=data,
             headers={"X-API-KEY": API_KEY},
-            timeout=10
+            timeout=15,
+            verify=True
         )
         return resp.status_code == 202
     except Exception as e:
@@ -113,11 +140,7 @@ def run_scraper(request):
     print(f"Starting {SOURCE_CODE} scraper...")
     LIST_URL = 'https://ctinews.com/'
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        # 加上 verify=False
-        resp = requests.get(LIST_URL, headers=headers, timeout=10, verify=False)
+        resp = http_session.get(LIST_URL, timeout=15)
         import re
         # 匹配 /news/items/XXXX
         item_paths = re.findall(r'/news/items/[a-zA-Z0-9]+', resp.text)
@@ -129,11 +152,25 @@ def run_scraper(request):
         return "No URLs found in list", 200
 
     new_urls = get_new_urls(urls)
+    print(f"Found {len(new_urls)} new URLs out of {len(urls)}")
+    
     success_count = 0
     for url in new_urls:
         article_data = scrape_article(url)
-        if article_data and article_data['cleanText']:
-            if ingest_article(article_data):
-                success_count += 1
+        if not article_data:
+            continue
+            
+        # 檢查必填欄位
+        if not article_data.get('title'):
+            print(f"Skipping {url}: Missing title")
+            continue
+        if not article_data.get('cleanText'):
+            print(f"Skipping {url}: Missing cleanText")
+            continue
+            
+        if ingest_article(article_data):
+            success_count += 1
+        else:
+            print(f"Failed to ingest: {url}")
     
     return f"Successfully processed {success_count} articles from {SOURCE_CODE}", 200
