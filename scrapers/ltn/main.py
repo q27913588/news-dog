@@ -64,7 +64,10 @@ def scrape_article(url):
         
         title = title_node.get_text(strip=True) if title_node else ""
         
-        content_node = soup.select_one('article')
+        # 使用 itemprop="articleBody" 較為穩定
+        content_node = soup.select_one('[itemprop="articleBody"]')
+        if not content_node:
+            content_node = soup.select_one('article')
         if not content_node:
             content_node = soup.select_one('div.text')
             
@@ -146,7 +149,9 @@ def run_scraper(request):
             for a in soup.select('ul.list li a'):
                 href = a.get('href', '')
                 if '/news/' in href and 'breakingnews' in href:
-                    all_urls.append(href)
+                    # 規範化 URL：移除 query string、fragment 和結尾斜線
+                    full_url = href.split('?')[0].split('#')[0].rstrip('/')
+                    all_urls.append(full_url)
         except Exception as e:
             print(f"Failed to fetch {cat} list: {e}")
 

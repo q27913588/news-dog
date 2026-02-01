@@ -61,7 +61,10 @@ def scrape_article(url):
             title_node = soup.select_one('h1')
         title = title_node.get_text(strip=True) if title_node else ""
         
-        content_node = soup.select_one('div#Content1')
+        # 使用 itemprop="articleBody" 較為穩定
+        content_node = soup.select_one('[itemprop="articleBody"]')
+        if not content_node:
+            content_node = soup.select_one('div#Content1')
         if not content_node:
             content_node = soup.select_one('article')
             
@@ -72,20 +75,29 @@ def scrape_article(url):
         else:
             clean_text = ""
 
-        time_node = soup.select_one('time.page-date')
-        if not time_node:
-            time_node = soup.select_one('span.date')
-            
+        # 優先從 meta tag 取得時間
+        time_node = soup.select_one('meta[property="article:published_time"]')
         published_at = ""
-        if time_node:
-            time_str = time_node.get_text(strip=True)
+        if time_node and time_node.get('content'):
+            time_str = time_node.get('content')
             try:
                 dt = parser.parse(time_str)
                 published_at = dt.strftime('%Y-%m-%d %H:%M:%S')
             except:
+                pass
+
+        if not published_at:
+            # 三立新聞的新選擇器 time.page_date
+            time_node = soup.select_one('time.page_date') or soup.select_one('time.page-date') or soup.select_one('span.date')
+            if time_node:
+                time_str = time_node.get_text(strip=True)
+                try:
+                    dt = parser.parse(time_str)
+                    published_at = dt.strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    published_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            else:
                 published_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        else:
-            published_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         return {
             "source": SOURCE_CODE,
@@ -115,34 +127,75 @@ def ingest_article(data):
 @functions_framework.http
 def run_scraper(request):
     print(f"Starting {SOURCE_CODE} scraper...")
+    all_urls = []
+    
+    # 方法1: 使用分類頁面
     # PageGroupID: 6 (政治), 41 (社會), 5 (國際)
     GROUP_IDS = ['6', '41', '5']
-    all_urls = []
     
     for group_id in GROUP_IDS:
         list_url = f'https://www.setn.com/ViewAll.aspx?PageGroupID={group_id}'
         try:
             resp = http_session.get(list_url, timeout=15)
             soup = BeautifulSoup(resp.text, 'lxml')
-            for a in soup.select('h3.view-li-title a'):
-                href = a['href']
+            
+            # 嘗試多個選擇器
+            links = soup.select('h3.view-li-title a')
+            if not links:
+                # 備用選擇器
+                links = soup.select('div.view-li-title a')
+            if not links:
+                links = soup.select('div.newsItems h3 a')
+            if not links:
+                # 最後嘗試所有包含 /News.aspx 的連結
+                links = soup.select('a[href*="/News.aspx"]')
+            
+            print(f"Found {len(links)} links in group {group_id} using selector")
+            
+            for a in links:
+                href = a.get('href', '')
+                if not href or '/News.aspx' not in href:
+                    continue
+                    
                 if href.startswith('http'):
                     full_url = href
                 else:
                     full_url = "https://www.setn.com" + href
                 
-                # 移除 utm 參數但保留 NewsID
-                if 'utm_' in full_url:
-                    full_url = re.sub(r'&utm_[^&]+', '', full_url)
-                    full_url = re.sub(r'\?utm_[^&]+&?', '?', full_url).rstrip('?')
-                
                 # 修正雙重 prefix 的問題 (如果有)
                 if "https://www.setn.comhttps://" in full_url:
                     full_url = full_url.replace("https://www.setn.comhttps://", "https://")
+                
+                # 三立特殊處理：保留 NewsID 參數，但移除其他參數
+                if '?' in full_url and 'NewsID=' in full_url:
+                    # 提取 NewsID
+                    match = re.search(r'NewsID=(\d+)', full_url)
+                    if match:
+                        news_id = match.group(1)
+                        full_url = f"https://www.setn.com/News.aspx?NewsID={news_id}"
+                else:
+                    # 沒有 NewsID 的情況，移除所有參數
+                    full_url = full_url.split('?')[0].split('#')[0].rstrip('/')
                     
                 all_urls.append(full_url)
         except Exception as e:
             print(f"Failed to fetch {group_id} list: {e}")
+    
+    # 方法2: 如果分類頁抓不到，嘗試從首頁抓取
+    if len(all_urls) < 5:
+        print(f"Warning: Only found {len(all_urls)} URLs from categories, trying homepage...")
+        try:
+            resp = http_session.get('https://www.setn.com/', timeout=15)
+            soup = BeautifulSoup(resp.text, 'lxml')
+            import re
+            # 使用正則表達式找出所有新聞連結
+            news_links = re.findall(r'NewsID=(\d+)', resp.text)
+            print(f"Found {len(news_links)} news links from homepage")
+            for news_id in set(news_links):
+                full_url = f"https://www.setn.com/News.aspx?NewsID={news_id}"
+                all_urls.append(full_url)
+        except Exception as e:
+            print(f"Failed to fetch homepage: {e}")
 
     if not all_urls:
         return "No URLs found in categories", 200

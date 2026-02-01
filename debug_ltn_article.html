@@ -1,0 +1,441 @@
+<div class="text boxTitle boxText" data-desc="內容頁">
+ <!-- 版形分化 -->
+ <!-- END 版形分化 -->
+ <!-- temp7 -->
+ <p>
+  <iframe allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen="" frameborder="0" height="668" referrerpolicy="strict-origin-when-cross-origin" src="https://www.youtube.com/embed/MTY2bSE3hsw" title="美軍關島擬部署金穹嚇阻中對台動武有效｜20260117自由觀點｜#shorts" width="376">
+  </iframe>
+ </p>
+ <!-- 點擊放大 -->
+ <script>
+  $('.photo').each(function() {
+    $(this).find('a').addClass('image-popup-vertical-fit');
+    $(this).find('a').removeClass('lightbox');
+    var url_img = $(this).find('img').attr('data-src');
+    var title = $(this).find('p').text();
+    // 添加屬性
+    $(this).find('a').attr('href', url_img);
+    $(this).find('a').attr('title', title);
+})
+ </script>
+ <div id="oneadIRDFPTag">
+ </div>
+ <div class="suggest_m suggestBottom" id="ad-IR2" style="text-align: center; display:none;">
+ </div>
+ <script>
+  const host = location.hostname.toLowerCase().replace(".ltn.com.tw", "");
+    var setOnead = false;
+    (function() {
+        var disable_onead_mobile_inread = false;
+        // 設定數值
+        var IR2units = {
+            'ent': {'slot': '/21202031/07-ent-mobile-sub-P-IR2', 'size': ['fluid', [1, 1], [300, 250], [320, 480], [336, 280]]},
+            'ec': {'slot': '/21202031/06-ec-mobile-sub-P-IR2', 'size': ['fluid', [1, 1], [300, 250], [320, 480], [336, 280]]},
+            'istyle': {'slot': '/21202031/08-style-mobile-sub-P-IR2', 'size': ['fluid',[1, 1], [300, 250], [320, 480],  [336, 280]]},
+            'auto': {'slot': '', 'size': []},
+            'sports': {'slot': '', 'size': []},
+            '3c': {'slot': '/21202031/04-3C-mobile-sub-P-IR2', 'size': ['fluid',[1, 1], [300, 250], [320, 480],  [336, 280]]},
+            'talk': {'slot': '/21202031/05-talk-mobile-sub-P-IR2', 'size': ['fluid', [336, 280], [1, 1], [300, 250], [320, 480]]},
+            'estate': {'slot': '21202031/11-estate-mobile-sub-P-IR2', 'size': ['fluid', [1, 1], [300, 250], [320, 480], [336, 280]]},
+            'features': {'slot': '/21202031/99-feature-mobile-sub-P-IR2', 'size': ['fluid', [1, 1], [300, 250], [320, 480], [336, 280]]},
+        };
+
+        if (host.indexOf('estate') === 0 || host.indexOf('features') === 0) {
+            disable_onead_mobile_inread = true;
+        }
+
+        
+        if (!cookies_m.isPC() && disable_onead_mobile_inread) {
+            $('#oneadIRDFPTag').css('display', 'none');
+            //IR2
+            $('#ad-IR2').css('display', 'block');
+            googletag.cmd.push(function() {
+                googletag.defineSlot(IR2units[host]['slot'], IR2units[host]['size'], 'ad-IR2').addService(googletag.pubads());
+                googletag.enableServices();
+            });
+            $(function(){
+                googletag.cmd.push(function() {
+                    googletag.display('ad-IR2');
+                });
+            });
+        } else { //onead
+            setOnead = true;
+        }
+    })();
+
+    function get_now_category(host) {
+        var _category = '-1';
+        try {
+            switch (host.toLowerCase()) {
+                case 'talk':
+                case 'istyle':
+                case 'ent':
+                case '3c':
+                case 'auto':
+                case 'food':
+                case 'sports':
+                case 'estate':
+                    _category = host;
+                    break;
+                case 'ec':
+                    _category = 'business';
+                    break;
+                default:
+                    var secA = uri.split('/')[1];
+                    var secB = uri.split('/')[2];
+                    if (secA.toLowerCase()=='news') _category = secB;
+                    break;
+            }
+        } catch (e) {
+
+        }
+        return _category;
+    }
+
+    var custom_call_MIR = function (params) {
+        if ( params === null || params.hasAd === false ) {
+            // 客製化 passback
+        }
+    }
+
+    var custom_call_IR = function (params) {
+        if ( params === null || params.hasAd === false ) {
+            // 客製化 passback
+        }
+    }
+
+    if (setOnead) {
+        var _ONEAD = {};
+        _ONEAD.pub = {};
+        _ONEAD.pub.slotobj = document.getElementById("oneadIRDFPTag");
+        _ONEAD.pub.slots = ["div-onead-ad"];
+        _ONEAD.pub.uid = "1000054";
+        _ONEAD.pub.external_url = "https://onead.onevision.com.tw/";
+        _ONEAD.pub.scopes = ["spotbuy", "speed"];
+        _ONEAD.pub.player_mode_div = "div-onead-ad";
+        _ONEAD.pub.player_mode = cookies_m.isPC() ? "inread" : "mobile-inread";
+        _ONEAD.pub.category = get_now_category(host);
+        _ONEAD.pub.queryAdCallback = cookies_m.isPC() ? custom_call_IR : custom_call_MIR;
+        _ONEAD.pub.is_same_adUnit = true;
+        var ONEAD_pubs = ONEAD_pubs || [];
+        ONEAD_pubs.push(_ONEAD);
+    }
+ </script>
+ <script src="https://ad-specs.guoshipartners.com/static/js/onead-lib.min.js" type="text/javascript">
+ </script>
+ <!-- 投票箱 -->
+ <link href="assets/css/vote.css" rel="stylesheet"/>
+ <script>
+  // 自定義的HTML
+    document.addEventListener('DOMContentLoaded', async function() {
+        // 替換帶有 ltnpoll class 的靜態元素
+        const ltnpoll = document.querySelector('.ltnpoll');
+        if (!ltnpoll) {
+            return
+        }
+        //抓id看是哪個題目
+        const LTV_No = ltnpoll.getAttribute('data-id')
+        //到detail表內取題目選項
+        let htmlData = await getTopicAndOptions(LTV_No);
+
+        if (htmlData.days == '-1') {
+            console.log("投票時間未到");
+            return;
+        } else if (htmlData.days == '-2') {
+            console.log("投票結束");
+            let votePercentData = countPetcent(htmlData);
+            
+            resViewHTML(htmlData, votePercentData).then(htmlContent => {
+                ltnpoll.outerHTML = htmlContent;
+                resViewCheck(1);
+            });
+        } else {
+            console.log("投票中");
+            let rederHtml = getStartVote(htmlData);
+            ltnpoll.outerHTML = rederHtml;
+        }
+
+        //組合html
+
+
+        //按鈕被點擊時替換投票html
+        $('.vote-bt').on('click', function() {
+            if (checkValue()) {
+                submitVote(LTV_No);
+            } else {
+                console.log("未勾選選項");
+            }
+        })
+    });
+
+    function getStartVote(htmlData) {
+        let customHTML = '';
+        //題目是否為多選
+        if (htmlData.isMulti == 1) {
+            //複選HTML
+            customHTML += '<div class="voting-container">';
+            customHTML += '<div class="votes-box">';
+            customHTML += '<div class="votes-word">';
+            customHTML += '<div class="ltn-votetitle">LTN投票箱<\/div>';
+            customHTML += '<h3 class="vote-title">' + htmlData.topic + '<\/h3>';
+            customHTML += '<\/div></div>';
+            customHTML += '<!-- 複選 -->';
+            customHTML += '<span class="vote-type">*複選<\/span>';
+
+            htmlData.options.forEach((option, index) => {
+                customHTML += '<div class="option optionafter">';
+                customHTML += '<input type="checkbox" name="vote" value="' + option.LTVD_No + '" id="' + option.LTVD_No + '">';
+                customHTML += '<label for="' + option.LTVD_No + '">' + option.LTVD_Content + '<\/label><\/div>';
+            });
+        } else {
+            //單選HTML
+            customHTML += '<div class="voting-container">';
+            customHTML += '<div class="ltn-votetitle">LTN投票箱<\/div>';
+            customHTML += '<h3 class="vote-title">' + htmlData.topic + '<\/h3>';
+            customHTML += '<!-- 單選 -->';
+            customHTML += '<span class="vote-type">*單選<\/span>';
+
+            htmlData.options.forEach((option, index) => {
+                customHTML += '<div class="option optionafter">';
+                customHTML += '<input type="radio" name="vote" value="' + option.LTVD_No + '" id="' + option.LTVD_No + '">';
+                customHTML += '<label for="' + option.LTVD_No + '">' + option.LTVD_Content + '<\/label><\/div>';
+            });
+        }
+
+        customHTML += `<!-- 時間與總票數 -->
+            <div class="vote-rules">
+                <span class="vote-time">剩餘時間：${htmlData.days} 小時<\/span>
+                <span class="vote-total">  <\/span>
+            <\/div>
+            <button class="vote-bt">投票看結果<\/button>
+            <\/div>`
+        return customHTML;
+    }
+    //投票結果防呆
+    function checkValue() {
+        // 檢查是否有任何一個 checkbox 或 radio 被勾選
+        if ($('input[type="radio"]:checked').length === 0 && $('input[type="checkbox"]:checked').length === 0) {
+            return false; // 如果都沒被勾選，防止提交
+        }
+        // 如果有任何一個被勾選，繼續執行
+        return true;
+    }
+
+    /**
+     * 投票看結果打投票api
+     */
+    function submitVote(LTV_No) {
+        // 獲取選中的 radio 按鈕
+        const selectedOption = $('input[name="vote"]:checked');
+        if (selectedOption.length > 0) {
+            let selectedValues = [];
+            selectedOption.each(function() {
+                selectedValues.push($(this).val());
+            });
+
+            // 構建投票資料
+            let voteData = {
+                LTVD_No: selectedValues,
+                LTV_No: LTV_No
+            };
+
+            // 發送POST 請求
+            fetch("https://vote3.ltn.com.tw/votelog", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded' // 使用簡單類型
+                    },
+                    body: JSON.stringify(voteData)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('AJAX Error：' + response.statusText);
+                    }
+                    return response.json();
+                }).then(data => {
+                    votePercent(data.votesData);
+                })
+        }
+    }
+    /**
+     * 結果頁HTML
+     */
+    async function resViewHTML(data, votePetcentData) {
+        let resHtml = "";
+        let days = (data.topic[0]['remain_day'] == undefined) ? data.days : data.topic[0]['remain_day'];
+
+        if (data.isMulti == 1 || data.topic[0].isMulti == 1) {
+            const votingContainer = document.querySelector('.voting-container');
+            if (votingContainer) {
+                votingContainer.classList.add('vote-s2');
+            }
+            if (days == '-2') {
+                resHtml += '<div class="voting-container vote-s2">'
+            }
+            resHtml += `
+                <div class="votes-box">
+                    <div class="votes-word">
+                        <div class="ltn-votetitle">LTN投票箱<\/div>
+                        <h3 class="vote-title">${data.topic[0].LTV_Subject? data.topic[0].LTV_Subject: data.topic}<\/h3>
+                    <\/div>
+                <\/div>
+                <!-- 複選 -->
+                <span class="vote-type">*複選<\/span>`
+            let dataLength = data.each ? data.each : data.options;
+            for (let i = 0; i < dataLength.length; i++) {
+                let option = dataLength[i]
+                resHtml += '<div class="op-selectgary option">';
+                resHtml += '<input type="checkbox" name="vote" value="' + option.LTVD_No + '" id="' + option.LTVD_No + '">';
+                resHtml += '<label for="' + option.LTVD_No + '">' + option.LTVD_Content + '<\/label>';
+                resHtml += '<!-- 結果比例與票數 -->';
+                resHtml += '<span class="vote-count">';
+                resHtml += '<span class="vote-percent select-color">' + votePetcentData[i] + '%<\/span>';
+                resHtml += '<span class="vote-quantity">' + dataLength[i].LTVD_Count + '票<\/span>';
+                resHtml += '<\/span>';
+                resHtml += '<!-- 進度條 -->';
+                resHtml += '<span class="vote-bar" style="width: ' + votePetcentData[i] + '%;"><\/span>';
+                resHtml += '<\/div>';
+            }
+        } else {
+            if (days == '-2') {
+                resHtml += '<div class="voting-container">'
+            }
+            resHtml += `
+                <div class="ltn-votetitle">LTN投票箱<\/div>
+                <h3 class="vote-title">${data.topic[0].LTV_Subject? data.topic[0].LTV_Subject: data.topic}<\/h3>
+                <!-- 單選 -->
+                <span class="vote-type">*單選<\/span>`
+            let dataLength = data.each ? data.each : data.options;
+            for (let i = 0; i < dataLength.length; i++) {
+                let option = dataLength[i]
+                resHtml += '<div class="op-selectgary option">';
+                resHtml += '<input type="radio" name="vote" value="' + option.LTVD_No + '" id="' + option.LTVD_No + '">';
+                resHtml += '<label for="' + option.LTVD_No + '">' + option.LTVD_Content + '<\/label>';
+                resHtml += '<!-- 結果比例與票數 -->';
+                resHtml += '<span class="vote-count">';
+                resHtml += '<span class="vote-percent select-color">' + votePetcentData[i] + '%<\/span>';
+                resHtml += '<span class="vote-quantity">' + dataLength[i].LTVD_Count + '票<\/span>';
+                resHtml += '<\/span>';
+                resHtml += '<!-- 進度條 -->';
+                resHtml += '<span class="vote-bar" style="width: ' + votePetcentData[i] + '%;"><\/span>';
+                resHtml += '<\/div>';
+            }
+        }
+
+        resHtml += '<!-- 時間與總票數 -->';
+        resHtml += '<div class="vote-rules">';
+        resHtml += '<span class="vote-time">剩餘時間：' + (days == '-2' ? "已截止" : (days + '小時')) + '<\/span>';
+        resHtml += '<span class="vote-total">總票數：' + (data.total === undefined ? data.totalCount : data.total.total_count) + '票 </span>';
+        resHtml += '<\/div>';
+        resHtml += '<button class="vote-bt">投票看結果<\/button>';
+
+        return resHtml;
+    }
+
+    /**
+     * 按下看結果時檢查頁面
+     * 禁用&隱藏偽元素單選圈
+     */
+    function resViewCheck(isEnd = 0) {
+        // 禁用所有 input 元素，將鼠標指針改為 not-allowed，並更改文字樣式
+        $('.voting-container input').attr('disabled', true).css({
+            'cursor': 'not-allowed',
+        });
+
+        // 確保所有 label 的文字和樣式都能顯示為禁用狀態
+        $('label').css('cursor', 'not-allowed');
+        $('.vote-bt').css('visibility', 'hidden');
+        if (isEnd == 1) {
+            $('.vote-type').html('投票結束');
+        } else {
+            $('.vote-type').html('已投票');
+        }
+        // 動態添加全局樣式規則，覆蓋 label::before 伪元素樣式
+        $('<style>')
+            .text(`
+            label::before {
+                 display: none !important;
+                cursor: not-allowed; /* 鼠標指針樣式 */
+            }
+        `)
+            .appendTo('head');
+    }
+
+    /**
+     * 請求總票數與個別票數
+     * 個別票數/總票數 = ??%
+     * 替換畫面上的html.text
+     */
+    function votePercent(voteData) {
+        let votePetcentData = countPetcent(voteData);
+
+        resViewHTML(voteData, votePetcentData).then(htmlContent => {
+            $('.voting-container').empty().html(htmlContent);
+            resViewCheck();
+        });
+    }
+
+    function countPetcent(data) {
+        let total = data.total?.total_count ? data.total.total_count : data.totalCount;
+
+        let percentages = [];
+        if (data.each == undefined) {
+            percentages = data.options.map(item => {
+                let count = parseFloat(item.LTVD_Count); // 將字串轉為數字
+                if (!isNaN(count) && total !== 0) {
+                    return (count / total * 100).toFixed(2);
+                }
+                return '0'; // 如果數字無效或 total 為 0，預設為 0
+            });
+        } else {
+            percentages = data.each.map(item => (item.LTVD_Count / total * 100).toFixed(2));
+        }
+
+        return percentages;
+    }
+
+    //取標題選項
+    async function getTopicAndOptions(LTV_No) {
+        //打一個api get兩張表的資料
+        const apiUrl = "https://vote3.ltn.com.tw/topicDetails/" + LTV_No;
+
+        //標題 vote 選項votedetail
+        const response = await fetch(apiUrl);
+
+        // 檢查 HTTP 回應是否成功
+        if (!response.ok) {
+            throw new Error(`失敗，狀態碼: ${response.status}`);
+        }
+        // 解析 JSON 回應
+        const data = await response.json();
+
+        if (data.every(subArray => Array.isArray(subArray) && subArray.length === 0)) {
+            return;
+        }
+
+        let voteData = {
+            topic: data[0][0].LTV_Subject,
+            isMulti: data[0][0].LTV_Multi,
+            days:  data[0][0].remain_day,
+            options: data[1],
+            totalCount: data[2].total_count
+        };
+
+        return voteData;
+    }
+ </script>
+ <!-- 台灣房屋特規廣告 -->
+ <div class="suggest">
+ </div>
+ <!-- 內文關鍵字 -->
+ <!-- 廣告 -->
+ <p class="appE1121">
+  不用抽 不用搶 現在用APP看新聞 保證天天中獎
+  <a class="ga_event" data-desc="APP載點" data-vars-box-title="內容頁" data-vars-desc="APP載點" href="https://service.ltn.com.tw/app" target="_blank" title="點我下載APP">
+   點我下載APP
+  </a>
+  <a class="ga_event" data-desc="活動辦法" data-vars-box-title="內容頁" data-vars-desc="活動辦法" href="https://drawpage.ltn.com.tw/slot_v9/" target="_blank" title="按我看活動辦法">
+   按我看活動辦法
+  </a>
+ </p>
+</div>

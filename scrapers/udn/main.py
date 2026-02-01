@@ -117,7 +117,8 @@ def run_scraper(request):
             soup = BeautifulSoup(resp.text, 'lxml')
             for a in soup.select('div.story-list__text h2 a'):
                 href = a['href']
-                full_url = "https://udn.com" + href.split('?')[0]
+                # 規範化 URL：移除 query string、fragment 和結尾斜線
+                full_url = "https://udn.com" + href.split('?')[0].split('#')[0].rstrip('/')
                 all_urls.append(full_url)
         except Exception as e:
             print(f"Failed to fetch {cat_id} list: {e}")

@@ -80,7 +80,10 @@ def scrape_article(url):
             title_node = soup.select_one('h1')
         title = title_node.get_text(strip=True) if title_node else ""
         
-        content_node = soup.select_one('div.article-content')
+        # 使用 itemprop="articleBody" 較為穩定
+        content_node = soup.select_one('[itemprop="articleBody"]')
+        if not content_node:
+            content_node = soup.select_one('div.article-content')
         if not content_node:
             content_node = soup.select_one('div.article-body')
         if not content_node:
@@ -93,21 +96,42 @@ def scrape_article(url):
         else:
             clean_text = ""
 
-        time_node = soup.select_one('time.pub-date')
-        if not time_node:
-            time_node = soup.select_one('time')
-            
+        # 優先從 meta tag 取得時間
+        time_node = soup.select_one('meta[property="article:published_time"]')
         published_at = ""
-        if time_node:
-            # 嘗試取得 datetime 屬性
-            time_str = time_node.get('datetime') or time_node.get_text(strip=True)
+        if time_node and time_node.get('content'):
+            time_str = time_node.get('content')
             try:
                 dt = parser.parse(time_str)
                 published_at = dt.strftime('%Y-%m-%d %H:%M:%S')
             except:
+                pass
+
+        if not published_at:
+            # 嘗試從 JSON-LD 取得 (CTI 現在主要使用這種方式儲存 metadata)
+            try:
+                import json
+                ld_json_node = soup.select_one('script[type="application/ld+json"]')
+                if ld_json_node:
+                    ld_data = json.loads(ld_json_node.string)
+                    if isinstance(ld_data, dict) and ld_data.get('datePublished'):
+                        dt = parser.parse(ld_data['datePublished'])
+                        published_at = dt.strftime('%Y-%m-%d %H:%M:%S')
+            except:
+                pass
+
+        if not published_at:
+            time_node = soup.select_one('time.pub-date') or soup.select_one('time')
+            if time_node:
+                # 嘗試取得 datetime 屬性
+                time_str = time_node.get('datetime') or time_node.get_text(strip=True)
+                try:
+                    dt = parser.parse(time_str)
+                    published_at = dt.strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    published_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            else:
                 published_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        else:
-            published_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         return {
             "source": SOURCE_CODE,
@@ -144,7 +168,8 @@ def run_scraper(request):
         import re
         # 匹配 /news/items/XXXX
         item_paths = re.findall(r'/news/items/[a-zA-Z0-9]+', resp.text)
-        urls = list(set(["https://ctinews.com" + path for path in item_paths]))
+        # 規範化 URL：移除 query string 和結尾斜線
+        urls = list(set([("https://ctinews.com" + path).split('?')[0].split('#')[0].rstrip('/') for path in item_paths]))
     except Exception as e:
         return f"Failed to fetch list: {e}", 500
 

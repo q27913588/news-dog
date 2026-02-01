@@ -124,7 +124,8 @@ def run_scraper(request):
                 href = a.get('href', '')
                 if '/news/' in href:
                     full_url = href if href.startswith('http') else "https://www.cna.com.tw" + href
-                    all_urls.append(full_url.split('?')[0])
+                    # 規範化 URL：移除 query string、fragment 和結尾斜線
+                    all_urls.append(full_url.split('?')[0].split('#')[0].rstrip('/'))
         except Exception as e:
             print(f"Failed to fetch {code} list: {e}")
 
