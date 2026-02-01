@@ -4,6 +4,7 @@ from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 import os
 import json
+import re
 from datetime import datetime
 import xml.etree.ElementTree as ET
 from dateutil import parser
@@ -50,6 +51,63 @@ def get_new_urls(urls):
         print(f"Error checking URLs: {e}")
     return []
 
+def extract_photographer(text):
+    """從圖片說明文字中提取攝影師署名"""
+    if not text:
+        return None
+    patterns = [
+        r'記者(.+?)攝',
+        r'攝影[：:]\s*(.+?)(?:\s|$|）|】)',
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, text)
+        if m:
+            return m.group(1).strip()
+    return None
+
+def extract_image_info(soup):
+    """提取文章主圖 URL 和攝影師"""
+    image_url = None
+    photographer = None
+
+    # 1. 從 og:image meta tag 取得圖片 URL
+    og_img = soup.select_one('meta[property="og:image"]')
+    if og_img and og_img.get('content'):
+        image_url = og_img['content']
+
+    # 2. 備用：從 JSON-LD 取得
+    if not image_url:
+        try:
+            for ld_node in soup.select('script[type="application/ld+json"]'):
+                ld_data = json.loads(ld_node.string)
+                if isinstance(ld_data, dict) and ld_data.get('image'):
+                    img = ld_data['image']
+                    if isinstance(img, str):
+                        image_url = img
+                    elif isinstance(img, dict):
+                        image_url = img.get('contentUrl') or img.get('url')
+                    elif isinstance(img, list) and img:
+                        first = img[0]
+                        image_url = first.get('contentUrl') or first.get('url') if isinstance(first, dict) else first
+                if image_url:
+                    break
+        except:
+            pass
+
+    # 3. 從第一張圖片的 title/alt 屬性提取攝影師（LTN 把署名放在 title 和 alt）
+    first_img = soup.select_one('[itemprop="articleBody"] img') or soup.select_one('article img')
+    if first_img:
+        caption_text = first_img.get('title', '') or first_img.get('alt', '')
+        photographer = extract_photographer(caption_text)
+
+    # 4. 備用：從 figcaption 提取
+    if not photographer:
+        figcaption = soup.select_one('[itemprop="articleBody"] figcaption') or soup.select_one('.photo_desc')
+        if figcaption:
+            photographer = extract_photographer(figcaption.get_text())
+
+    return image_url, photographer
+
 def scrape_article(url):
     """爬取單篇文章內容"""
     try:
@@ -57,25 +115,28 @@ def scrape_article(url):
         resp.encoding = 'utf-8'
         soup = BeautifulSoup(resp.text, 'lxml')
 
+        # 提取圖片資訊（在清理 content 前提取）
+        image_url, photographer = extract_image_info(soup)
+
         # 自由時報的選擇器
         title_node = soup.select_one('div.whitecon h1')
         if not title_node:
             title_node = soup.select_one('h1')
-        
+
         title = title_node.get_text(strip=True) if title_node else ""
-        
+
         # 使用 itemprop="articleBody" 較為穩定
         content_node = soup.select_one('[itemprop="articleBody"]')
         if not content_node:
             content_node = soup.select_one('article')
         if not content_node:
             content_node = soup.select_one('div.text')
-            
+
         # 移除不需要的元素
         if content_node:
             for tag in content_node.select('script, style, .article_popular, .apps, .boxTitle, .author, .disclaim, .further_reading'):
                 tag.decompose()
-            
+
             # 優先嘗試取得 p 標籤內容
             paragraphs = content_node.find_all('p')
             if paragraphs:
@@ -105,7 +166,7 @@ def scrape_article(url):
         else:
             published_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        return {
+        result = {
             "source": SOURCE_CODE,
             "url": url,
             "title": title,
@@ -113,6 +174,11 @@ def scrape_article(url):
             "rawHtml": "",
             "cleanText": clean_text
         }
+        if image_url:
+            result["imageUrl"] = image_url
+        if photographer:
+            result["imagePhotographer"] = photographer
+        return result
     except Exception as e:
         print(f"Error scraping {url}: {e}")
         return None
